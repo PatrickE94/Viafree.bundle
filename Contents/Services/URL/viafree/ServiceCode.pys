@@ -1,0 +1,112 @@
+import urllib, re
+
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/536.26.17 (KHTML, like Gecko) Version/6.0.2 Safari/536.26.17"
+
+BANDWIDTH_PATTERN = Regex('#EXT.*BANDWIDTH=([0-9]+)')
+######################################
+def MetadataObjectForURL(url):
+
+	episode = JSON.ObjectFromURL(urllib.unquote(url))
+
+	return EpisodeObject(
+			rating_key = episode["id"],
+			title = episode["title"],
+			summary = episode["summary"],
+			duration = episode["duration"] * 1000,
+			show = unicode(episode["formatTitle"]),
+			art = episode["image"].replace("{size}", "1080x720"),
+			thumb = episode["image"].replace("{size}", "300x200")
+	)
+######################################
+def MediaObjectsForURL(url):
+	videoId = re.match('.*?([0-9]+)$', url).group(1)
+	return [
+		MediaObject(
+			parts = [PartObject(key=HTTPLiveStreamURL(Callback(PlayVideo, videoId=videoId)))],
+			audio_channels = 2,
+			optimized_for_streaming = True
+		)
+	]
+######################################
+@indirect
+def PlayVideo(videoId):
+	return IndirectResponse(
+		VideoClipObject,
+		key = HTTPLiveStreamURL(Callback(RegeneratePlaylist, videoId = videoId))
+	)
+
+######################################
+# Plex is unable to handle relative playlist files and doesn't select the correct bandwidth
+# so we are manually creating the playlist with the max bandwidth
+######################################
+def RegeneratePlaylist(videoId, autoAdjustQuality, hasMDE, location, mediaBufferSize):
+	streams = JSON.ObjectFromURL('http://playapi.mtgx.tv/v3/videos/stream/' + videoId)
+	stream_url = streams["streams"]["hls"]
+	playlist = HTTP.Request(stream_url).content.splitlines()
+	Log("JTDEBUG : playlist:%s" % playlist)
+
+	max_bandwidth = 0
+	max_bandwidth_meta = ""
+	max_bandwidth_url = ""
+	new_playlist = ""
+
+	reading = False
+
+	url_params = re.sub(".+(\.m3u8.*)","\\1", stream_url)
+	url_prefix = stream_url[:stream_url.rindex("/")]
+
+	for line in playlist:
+		bandwidth = BANDWIDTH_PATTERN.search(line)
+		if not bandwidth:
+			if '#' in line:
+				new_playlist = new_playlist + line + '\n'
+			elif not reading:
+				continue
+			else:
+				if not line.startswith('http'):
+					max_bandwidth_url = url_prefix + '/' + line
+				else:
+					max_bandwidth_url = line
+				reading = False
+		else:
+			current_bandwidth = int(bandwidth.group(1))
+
+			if current_bandwidth > max_bandwidth:
+				max_bandwidth = current_bandwidth
+				max_bandwidth_meta = line
+				reading = True
+
+	if max_bandwidth_url.endswith(".m3u8"):
+		# Add url params
+		max_bandwidth_url = re.sub("\.m3u8", url_params, max_bandwidth_url)
+	new_playlist = new_playlist + max_bandwidth_meta + '\n'
+	new_playlist = new_playlist + max_bandwidth_url + '\n'
+
+	Log("JTDEBUG : new_playlist:%s" % new_playlist)
+
+	if Prefs['experimental']:
+		return ReadM3u8(url_prefix, max_bandwidth_url)
+
+	return new_playlist
+
+######################################
+def ReadM3u8(url_prefix, m3u8_url):
+
+		# Experimental...
+
+		m3u8_content = HTTP.Request(m3u8_url).content.splitlines()
+
+		new_content = ""
+
+		for line in m3u8_content:
+				if ".ts" in line and not line.startswith('http'):
+						line = url_prefix + '/' + line
+				new_content = new_content + line + '\n'
+
+		# Log("JTDEBUG : new_content:%s" % new_content)
+
+		return new_content
+
+####################################################################################################
+def NormalizeURL(url):
+		return url

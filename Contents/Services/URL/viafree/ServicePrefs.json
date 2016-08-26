@@ -1,0 +1,8 @@
+[
+  {
+    "id": "experimental",
+    "type": "bool",
+    "label": "Experimental player (N/A for live streams)",
+    "default": "false"
+  }
+]
