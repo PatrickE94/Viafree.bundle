@@ -1,6 +1,14 @@
+import urllib
+
 PLAYCLIENT_URL = 'http://viafree.se/api/playClient'
 ITEMS_PER_PAGE = 20
 
+ART_SIZE = "1080x720"
+SHOW_THUMB_SIZE = "200x300"
+SEASON_THUMB_SIZE = "200x300"
+EPISODE_THUMB_SIZE = "300x200"
+
+##############################################
 def Shows(oc, shows):
     for show in shows:
         oc.add(
@@ -9,35 +17,21 @@ def Shows(oc, shows):
                 rating_key = show["id"],
                 title = unicode(show["title"]),
                 summary = unicode(show["summary"]),
-                thumb = show["image"].replace("{size}", "200x300"),
-                art = show["image"].replace("{size}", "1080x720")
+                thumb = show["image"].replace("{size}", SHOW_THUMB_SIZE),
+                art = show["image"].replace("{size}", ART_SIZE)
             )
         )
 
     return oc
 
-def GetShowsURL(page, category = '', query = ''):
-
-    reqQuery = {}
-
-    if category:
-        reqQuery["category"] = category
-
-    if query:
-        reqQuery["term"] = query
-
-    Log(PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=formats;query=%s' % (JSON.StringFromObject(reqQuery)))
-    return PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=formats;query=%s' % (JSON.StringFromObject(reqQuery))
-
-
-##############################################3
-
+##############################################
 def Start():
     ObjectContainer.title1 = 'Viafree'
 
     HTTP.CacheTime = 300
     HTTP.Headers['User-agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/536.26.17 (KHTML, like Gecko) Version/6.0.2 Safari/536.26.17'
 
+##############################################
 @handler('/video/viafree', 'Viafree')
 def MainMenu():
     oc = ObjectContainer(no_cache = True)
@@ -69,6 +63,7 @@ def MainMenu():
 
     return oc
 
+##############################################
 @route('/video/viafree/categories')
 def ViafreeCategories(title):
     oc = ObjectContainer(title2 = unicode(title))
@@ -78,7 +73,7 @@ def ViafreeCategories(title):
     for category in categories:
         oc.add(
             DirectoryObject(
-                key = Callback(ViafreeShows, title = category["name"], categoryId = unicode(category["id"])),
+                key = Callback(ViafreeShows, title = category["name"], category = category["id"]),
                 title = unicode(category["name"])
             )
         )
@@ -87,12 +82,19 @@ def ViafreeCategories(title):
 
     return oc
 
-@route('/video/viafree/shows', query = list, page = int)
-def ViafreeShows(title, categoryId = '', query = '', page = 1):
+##############################################
+@route('/video/viafree/shows', query = list)
+def ViafreeShows(title, category = ''):
     oc = ObjectContainer(title2 = unicode(title))
 
-    shows = JSON.ObjectFromURL(GetShowsURL(page, categoryId, query))
-    oc = Shows(oc, shows)
+    reqQuery = {}
+
+    if category:
+        reqQuery["category"] = category
+
+    url = PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=formats;query='
+    url = url + urllib.quote(JSON.StringFromObject(reqQuery))
+    oc = Shows(oc, JSON.ObjectFromURL(url))
 
     if len(oc) < 1:
         oc.header = "Inga program funna"
@@ -100,15 +102,40 @@ def ViafreeShows(title, categoryId = '', query = '', page = 1):
 
         return oc
 
+    oc.objects.sort(key=lambda obj: obj.title)
+
+    return oc
+
+##############################################
+@route('/video/viafree/search', page = int)
+def Search(query, title, page = 1):
+    oc = ObjectContainer(title1="Viafree", title2=unicode(title + " '%s'" % query))
+
+    reqQuery = {
+        "term": query,
+        "limit": 20,
+        "columns": "formats",
+        "page": page
+    }
+    url = PLAYCLIENT_URL + ';isColumn=true;resource=search;query='
+    url = url + urllib.quote(JSON.StringFromObject(reqQuery))
+
+    results = JSON.ObjectFromURL(url)
+    if "formats" in results:
+        Shows(oc, results["formats"])
+
+    if len(oc) < 1:
+        oc.header = "Inga program funna"
+        oc.message = unicode("Inga resultat för '%s'" % query)
+
     elif len(oc) >= ITEMS_PER_PAGE:
         oc.add(
             NextPageObject(
                 key =
                     Callback(
-                        ViafreeShows,
-                        title = title,
-                        categoryId = categoryId,
+                        Search,
                         query = query,
+                        title = title,
                         page = page + 1
                     ),
                 title = "Ladda mera..."
@@ -117,33 +144,13 @@ def ViafreeShows(title, categoryId = '', query = '', page = 1):
 
     return oc
 
-@route('/video/viafree/search')
-def Search(query, title):
-    oc = ObjectContainer(title1="Viafree", title2=unicode(title + " '%s'" % query))
-
-    reqQuery = {
-        "term": query,
-        "limit": 20,
-        "columns": "formats",
-        "with": "format"
-    }
-
-    results = JSON.ObjectFromURL(PLAYCLIENT_URL + ';isColumn=true;resource=search;query=%s' % (JSON.StringFromObject(reqQuery)))
-    if "formats" in results:
-        Shows(oc, results["formats"])
-
-### TODO Pagination
-
-    return oc
-
 
 @route('/video/viafree/seasons', show = list)
 def ViafreeShowSeasons(show):
-    Log(show)
     oc = ObjectContainer(title2 = unicode(show["title"]))
 
     reqQuery = {"format": show["id"], "order": "-order"}
-    seasons = JSON.ObjectFromURL(PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=seasons;query=%s' % (JSON.StringFromObject(reqQuery)))
+    seasons = JSON.ObjectFromURL(PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=seasons;query=' + urllib.quote(JSON.StringFromObject(reqQuery)))
 
     for season in seasons:
         oc.add(
@@ -154,8 +161,8 @@ def ViafreeShowSeasons(show):
                 show = show["title"],
                 index = season["seasonNumber"],
                 summary = unicode(season["summary"]),
-                art = show["image"].replace("{size}", "1080x720"),
-                thumb = season["image"].replace("{size}", "200x300")
+                art = season["image"].replace("{size}", ART_SIZE),
+                thumb = season["image"].replace("{size}", SEASON_THUMB_SIZE)
             )
         )
 
@@ -166,7 +173,9 @@ def ViafreeEpisodes(show, season):
     oc = ObjectContainer(title1=unicode(show["title"]), title2=unicode(season["title"]))
 
     reqQuery = {"season":season["id"],"type":"program"}
-    episodes = JSON.ObjectFromURL(PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=videos;query=%s' % (JSON.StringFromObject(reqQuery)))
+    url = PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=videos;query='
+    url = url + urllib.quote(JSON.StringFromObject(reqQuery))
+    episodes = JSON.ObjectFromURL(url)
 
     for episode in episodes:
         oc.add(
@@ -177,9 +186,11 @@ def ViafreeEpisodes(show, season):
                 duration = episode["duration"] * 1000,
                 index = episode["episodeNumber"],
                 show = unicode(episode["formatTitle"]),
-                art = episode["image"].replace("{size}", "1080x720"),
-                thumb = episode["image"].replace("{size}", "300x200")
+                art = episode["image"].replace("{size}", ART_SIZE),
+                thumb = episode["image"].replace("{size}", EPISODE_THUMB_SIZE)
             )
         )
+
+    oc.objects.sort(key=lambda obj: obj.index)
 
     return oc

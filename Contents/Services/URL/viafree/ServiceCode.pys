@@ -3,7 +3,7 @@ import urllib, re
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/536.26.17 (KHTML, like Gecko) Version/6.0.2 Safari/536.26.17"
 
 BANDWIDTH_PATTERN = Regex('#EXT.*BANDWIDTH=([0-9]+)')
-######################################
+##############################################
 def MetadataObjectForURL(url):
 
 	episode = JSON.ObjectFromURL(urllib.unquote(url))
@@ -17,7 +17,8 @@ def MetadataObjectForURL(url):
 			art = episode["image"].replace("{size}", "1080x720"),
 			thumb = episode["image"].replace("{size}", "300x200")
 	)
-######################################
+
+##############################################
 def MediaObjectsForURL(url):
 	videoId = re.match('.*?([0-9]+)$', url).group(1)
 	return [
@@ -27,7 +28,8 @@ def MediaObjectsForURL(url):
 			optimized_for_streaming = True
 		)
 	]
-######################################
+
+##############################################
 @indirect
 def PlayVideo(videoId):
 	return IndirectResponse(
@@ -35,10 +37,10 @@ def PlayVideo(videoId):
 		key = HTTPLiveStreamURL(Callback(RegeneratePlaylist, videoId = videoId))
 	)
 
-######################################
+##############################################
 # Plex is unable to handle relative playlist files and doesn't select the correct bandwidth
 # so we are manually creating the playlist with the max bandwidth
-######################################
+##############################################
 def RegeneratePlaylist(videoId, autoAdjustQuality, hasMDE, location, mediaBufferSize):
 	streams = JSON.ObjectFromURL('http://playapi.mtgx.tv/v3/videos/stream/' + videoId)
 	stream_url = streams["streams"]["hls"]
@@ -89,7 +91,7 @@ def RegeneratePlaylist(videoId, autoAdjustQuality, hasMDE, location, mediaBuffer
 
 	return new_playlist
 
-######################################
+##############################################
 def ReadM3u8(url_prefix, m3u8_url):
 
 		# Experimental...
@@ -107,6 +109,6 @@ def ReadM3u8(url_prefix, m3u8_url):
 
 		return new_content
 
-####################################################################################################
+##############################################
 def NormalizeURL(url):
 		return url
