@@ -78,7 +78,7 @@ def PlayVideo(videoId):
 # Plex is unable to handle relative playlist files and doesn't select the correct bandwidth
 # so we are manually creating the playlist with the max bandwidth
 ##############################################
-def RegeneratePlaylist(videoId, autoAdjustQuality, hasMDE, location, mediaBufferSize):
+def RegeneratePlaylist(videoId, autoAdjustQuality = None, hasMDE = None, location = None, mediaBufferSize = None):
 	streams = JSON.ObjectFromURL('http://playapi.mtgx.tv/v3/videos/stream/' + videoId)
 	stream_url = streams["streams"]["hls"]
 	playlist = HTTP.Request(stream_url).content.splitlines()
