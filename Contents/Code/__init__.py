@@ -32,6 +32,57 @@ def Shows(oc, shows):
     return oc
 
 ##############################################
+def Episodes(oc, episodes):
+    for episode in episodes:
+        try:
+            show = unicode(episode["formatTitle"])
+        except:
+            show = None
+
+        title = unicode(episode["title"])
+        if show:
+            title = title.replace(show, '').strip()
+
+        try:
+            originally_available_at = Datetime.ParseDate(episode["airedAt"])
+        except:
+            originally_available_at = None
+
+        try:
+            duration = int(episode["duration"]) * 1000
+        except:
+            duration = None
+
+        try:
+            episodeNumber = int(video["episodeNumber"])
+        except:
+            episodeNumber = None
+
+        try:
+            seasonNumber = int(video["seasonNumber"])
+        except:
+            seasonNumber = None
+
+        oc.add(
+            EpisodeObject(
+                url = PLAYCLIENT_URL + ";resource=videos/" + episode["id"],
+                title = title,
+                summary = unicode(episode["summary"]),
+                show = show,
+                duration = duration,
+                index = episodeNumber,
+                season = seasonNumber,
+                originally_available_at = originally_available_at,
+                art = episode["image"].replace("{size}", ART_SIZE),
+                thumb = episode["image"].replace("{size}", EPISODE_THUMB_SIZE)
+            )
+        )
+
+#####################################################################
+# This (optional) function is initially called by the PMS framework to
+# initialize the plug-in. This includes setting up the Plug-in static
+# instance along with the displayed artwork.
+
 def Start():
     Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
     Plugin.AddViewGroup("List", viewMode="List", mediaType="items")
@@ -205,10 +256,10 @@ def ViafreeShowSeasons(show):
     for season in seasons:
         oc.add(
             SeasonObject(
-                key = Callback(ViafreeEpisodes, show = show, season = season),
+                key = Callback(ViafreeEpisodes, title1 = show["title"], title2 = season["title"], seasonId = season["id"]),
                 rating_key = season["id"],
                 title = unicode(season["title"]),
-                show = show["title"],
+                show = unicode(show["title"]),
                 index = season["seasonNumber"],
                 summary = unicode(season["summary"]),
                 art = season["image"].replace("{size}", ART_SIZE),
@@ -219,27 +270,14 @@ def ViafreeShowSeasons(show):
     return oc
 
 @route(PREFIX + '/episodes', season = list)
-def ViafreeEpisodes(show, season):
-    oc = ObjectContainer(title1=unicode(show["title"]), title2=unicode(season["title"]))
+def ViafreeEpisodes(title1, title2, seasonId):
+    oc = ObjectContainer(title1=unicode(title1), title2=unicode(title2))
 
-    reqQuery = {"season":season["id"],"type":"program"}
+    reqQuery = { "season": seasonId, "type": "program" }
     url = PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=videos;query='
     url = url + urllib.quote(JSON.StringFromObject(reqQuery))
     episodes = JSON.ObjectFromURL(url)
-
-    for episode in episodes:
-        oc.add(
-            EpisodeObject(
-                url = PLAYCLIENT_URL + ";resource=videos/" + episode["id"],
-                title = unicode(episode["title"]),
-                summary = unicode(episode["summary"]),
-                duration = episode["duration"] * 1000,
-                index = episode["episodeNumber"],
-                show = unicode(episode["formatTitle"]),
-                art = episode["image"].replace("{size}", ART_SIZE),
-                thumb = episode["image"].replace("{size}", EPISODE_THUMB_SIZE)
-            )
-        )
+    Episodes(oc, episodes)
 
     oc.objects.sort(key=lambda obj: obj.index)
 

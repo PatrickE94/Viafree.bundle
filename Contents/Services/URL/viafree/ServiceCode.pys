@@ -2,20 +2,57 @@ import urllib, re
 
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/536.26.17 (KHTML, like Gecko) Version/6.0.2 Safari/536.26.17"
 
+ART_SIZE = "1080x720"
+SHOW_THUMB_SIZE = "200x300"
+SEASON_THUMB_SIZE = "200x300"
+EPISODE_THUMB_SIZE = "300x200"
+
 BANDWIDTH_PATTERN = Regex('#EXT.*BANDWIDTH=([0-9]+)')
 ##############################################
 def MetadataObjectForURL(url):
 
 	episode = JSON.ObjectFromURL(urllib.unquote(url))
 
+	try:
+		show = unicode(episode["formatTitle"])
+	except:
+		show = None
+
+	title = unicode(episode["title"])
+	if show:
+		title = title.replace(show, '').strip()
+
+	try:
+		originally_available_at = Datetime.ParseDate(episode["airedAt"])
+	except:
+		originally_available_at = None
+
+	try:
+		duration = int(episode["duration"]) * 1000
+	except:
+		duration = None
+
+	try:
+		episodeNumber = int(video["episodeNumber"])
+	except:
+		episodeNumber = None
+
+	try:
+		seasonNumber = int(video["seasonNumber"])
+	except:
+		seasonNumber = None
+
 	return EpisodeObject(
-			rating_key = episode["id"],
-			title = episode["title"],
-			summary = episode["summary"],
-			duration = episode["duration"] * 1000,
-			show = unicode(episode["formatTitle"]),
-			art = episode["image"].replace("{size}", "1080x720"),
-			thumb = episode["image"].replace("{size}", "300x200")
+		rating_key = episode["id"],
+		title = title,
+		summary = unicode(episode["summary"]),
+		show = show,
+		duration = duration,
+		index = episodeNumber,
+		season = seasonNumber,
+		originally_available_at = originally_available_at,
+		art = episode["image"].replace("{size}", ART_SIZE),
+		thumb = episode["image"].replace("{size}", EPISODE_THUMB_SIZE)
 	)
 
 ##############################################
