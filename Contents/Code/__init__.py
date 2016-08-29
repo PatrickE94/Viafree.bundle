@@ -1,4 +1,4 @@
-import urllib
+import urllib, re
 
 TITLE = 'Viafree'
 ART = 'art-default.png'
@@ -12,6 +12,7 @@ ITEMS_PER_PAGE = 20
 ART_SIZE = "1080x720"
 SHOW_THUMB_SIZE = "200x300"
 SEASON_THUMB_SIZE = "200x300"
+CHANNEL_THUMB_SIZE = "200x200"
 EPISODE_THUMB_SIZE = "300x200"
 
 ##############################################
@@ -61,6 +62,14 @@ def MainMenu():
         )
     )
 
+    title = L('Channels')
+    oc.add(
+        DirectoryObject(
+            key = Callback(ViafreeChannels, title = title),
+            title = title
+        )
+    )
+
     title = L('All Programs')
     oc.add(
         DirectoryObject(
@@ -99,15 +108,39 @@ def ViafreeCategories(title):
 
     return oc
 
+@route(PREFIX + '/channels')
+def ViafreeChannels(title):
+    oc = ObjectContainer(title2 = unicode(title))
+
+    channels = JSON.ObjectFromURL(PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=channels')
+    for channel in channels:
+        try:
+            thumb = channel["image"].replace('{size}', CHANNEL_THUMB_SIZE)
+        except:
+            thumb = None
+
+        oc.add(
+            DirectoryObject(
+                key = Callback(ViafreeShows, title = channel["name"], channel = channel["id"]),
+                title = unicode(channel["name"]),
+                thumb = thumb
+            )
+        )
+
+    return oc
+
 ##############################################
 @route(PREFIX + '/shows', query = list)
-def ViafreeShows(title, category = ''):
+def ViafreeShows(title, category = '', channel = ''):
     oc = ObjectContainer(title2 = unicode(title))
 
     reqQuery = {}
 
     if category:
         reqQuery["category"] = category
+
+    if channel:
+        reqQuery["channel"] = channel
 
     url = PLAYCLIENT_URL + ';fetchAll=true;isList=true;resource=formats;query='
     url = url + urllib.quote(JSON.StringFromObject(reqQuery))
