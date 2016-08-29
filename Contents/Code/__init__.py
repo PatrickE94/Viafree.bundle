@@ -159,6 +159,7 @@ def ViafreeCategories(title):
 
     return oc
 
+##############################################
 @route(PREFIX + '/channels')
 def ViafreeChannels(title):
     oc = ObjectContainer(title2 = unicode(title))
@@ -245,7 +246,7 @@ def Search(query, title, page = 1):
 
     return oc
 
-
+##############################################
 @route(PREFIX + '/seasons', show = list)
 def ViafreeShowSeasons(show):
     oc = ObjectContainer(title2 = unicode(show["title"]))
@@ -269,6 +270,7 @@ def ViafreeShowSeasons(show):
 
     return oc
 
+##############################################
 @route(PREFIX + '/episodes', season = list)
 def ViafreeEpisodes(title1, title2, seasonId):
     oc = ObjectContainer(title1=unicode(title1), title2=unicode(title2))
