@@ -1,6 +1,12 @@
 import urllib
 
+TITLE = 'Viafree'
+ART = 'art-default.png'
+ICON = 'icon-default.png'
+
+PREFIX = '/video/viafree'
 PLAYCLIENT_URL = 'http://viafree.se/api/playClient'
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/536.26.17 (KHTML, like Gecko) Version/6.0.2 Safari/536.26.17'
 ITEMS_PER_PAGE = 20
 
 ART_SIZE = "1080x720"
@@ -26,17 +32,28 @@ def Shows(oc, shows):
 
 ##############################################
 def Start():
-    ObjectContainer.title1 = 'Viafree'
+    Plugin.AddViewGroup("Details", viewMode="InfoList", mediaType="items")
+    Plugin.AddViewGroup("List", viewMode="List", mediaType="items")
+
+    ObjectContainer.title1 = TITLE
+    ObjectContainer.view_group = 'List'
+    ObjectContainer.art = R(ART)
+
+    DirectoryObject.thumb = R(ICON)
+    DirectoryObject.art = R(ART)
+    VideoClipObject.thumb = R(ICON)
+    VideoClipObject.art = R(ART)
 
     HTTP.CacheTime = 300
-    HTTP.Headers['User-agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/536.26.17 (KHTML, like Gecko) Version/6.0.2 Safari/536.26.17'
+    HTTP.Headers['User-agent'] = USER_AGENT
 
 ##############################################
-@handler('/video/viafree', 'Viafree')
+@handler(PREFIX, TITLE, ICON, ART)
 def MainMenu():
     oc = ObjectContainer(no_cache = True)
+    ObjectContainer.art = R(ART)
 
-    title = 'Kategorier'
+    title = L('Categories')
     oc.add(
         DirectoryObject(
             key = Callback(ViafreeCategories, title = title),
@@ -44,7 +61,7 @@ def MainMenu():
         )
     )
 
-    title = 'Alla program'
+    title = L('All Programs')
     oc.add(
         DirectoryObject(
             key = Callback(ViafreeShows, title = title),
@@ -52,7 +69,7 @@ def MainMenu():
         )
     )
 
-    title = unicode('Sök')
+    title = L('Search')
     oc.add(
         InputDirectoryObject(
             key = Callback(Search, title = title),
@@ -64,7 +81,7 @@ def MainMenu():
     return oc
 
 ##############################################
-@route('/video/viafree/categories')
+@route(PREFIX + '/categories')
 def ViafreeCategories(title):
     oc = ObjectContainer(title2 = unicode(title))
 
@@ -83,7 +100,7 @@ def ViafreeCategories(title):
     return oc
 
 ##############################################
-@route('/video/viafree/shows', query = list)
+@route(PREFIX + '/shows', query = list)
 def ViafreeShows(title, category = ''):
     oc = ObjectContainer(title2 = unicode(title))
 
@@ -107,7 +124,7 @@ def ViafreeShows(title, category = ''):
     return oc
 
 ##############################################
-@route('/video/viafree/search', page = int)
+@route(PREFIX + '/search', page = int)
 def Search(query, title, page = 1):
     oc = ObjectContainer(title1="Viafree", title2=unicode(title + " '%s'" % query))
 
@@ -145,7 +162,7 @@ def Search(query, title, page = 1):
     return oc
 
 
-@route('/video/viafree/seasons', show = list)
+@route(PREFIX + '/seasons', show = list)
 def ViafreeShowSeasons(show):
     oc = ObjectContainer(title2 = unicode(show["title"]))
 
@@ -168,7 +185,7 @@ def ViafreeShowSeasons(show):
 
     return oc
 
-@route('/video/viafree/episodes', season = list)
+@route(PREFIX + '/episodes', season = list)
 def ViafreeEpisodes(show, season):
     oc = ObjectContainer(title1=unicode(show["title"]), title2=unicode(season["title"]))
 
